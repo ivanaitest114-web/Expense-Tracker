@@ -1,1312 +1,354 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Monthly Expense Tracker Dashboard</title>
-  <!-- Apple iOS Home Screen Web App (PWA) Meta Tags -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Expenses">
-  <meta name="theme-color" content="#ffffff">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%234f46e5'/%3E%3Cpath d='M45 68a14 14 0 0 1 14-14h62a14 14 0 0 1 14 14v44a14 14 0 0 1-14 14H59a14 14 0 0 1-14-14V68zm14-4a4 4 0 0 0-4 4v8h70v-8a4 4 0 0 0-4-4H59zm66 22H55v26a4 4 0 0 0 4 4h62a4 4 0 0 0 4-4V86zm-55 12h12a4 4 0 0 1 0 8H70a4 4 0 0 1 0-8z' fill='%23ffffff'/%3E%3C/svg%3E">
-  <!-- Load Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Load Chart.js for Category Breakdown Visualization -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Load Inter Font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
-    }
-    /* Smooth custom scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
-    }
-  </style>
-</head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+  <!-- Data Management Actions -->
+  <div class="flex flex-wrap items-center gap-2">
+    <button id="btn-export-csv" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center gap-1.5 cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      Export CSV
+    </button>
+    <button id="btn-reset-sample" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition flex items-center gap-1.5 cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      Reset Sample Data
+    </button>
+    <button id="btn-clear-all" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition flex items-center gap-1.5 cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+      Clear All
+    </button>
+  </div>
+</div>
 
-  <!-- Toast Notification Banner (Replaces alert/confirm) -->
-  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-  <!-- Top Navigation Header -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
-          <!-- Wallet Icon SVG -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-          </svg>
-        </div>
-        <div>
-          <h1 class="text-xl font-bold text-slate-900 tracking-tight">Monthly Expense Tracker</h1>
-          <p class="text-xs text-slate-500">Expenses over <span class="font-semibold text-red-600">$100.00</span> are automatically flagged</p>
-        </div>
-      </div>
-
-      <!-- Data Management Actions -->
+<!-- 0. Budget & Period Progress Banner -->
+<section aria-label="Budget and Period Progress" id="budget-card" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm transition-colors duration-300">
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="space-y-1.5">
       <div class="flex flex-wrap items-center gap-2">
-        <button id="btn-export-csv" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center gap-1.5 cursor-pointer">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          Export CSV
-        </button>
-        <button id="btn-reset-sample" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition flex items-center gap-1.5 cursor-pointer">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Reset Sample Data
-        </button>
-        <button id="btn-clear-all" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition flex items-center gap-1.5 cursor-pointer">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          Clear All
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- Main Dashboard Container -->
-  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-1 space-y-6">
-
-    <!-- 0. Budget & Period Progress Banner -->
-    <section aria-label="Budget and Period Progress" id="budget-card" class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm transition-colors duration-300">
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div class="space-y-1.5">
-          <div class="flex flex-wrap items-center gap-2">
-            <h2 class="text-base font-bold text-slate-900">Budget &amp; Period Overview</h2>
-            <span id="budget-period-badge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span id="budget-period-label">Nov 1 – Nov 30, 2026</span>
-            </span>
-            <span id="budget-status-badge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-              On Track
-            </span>
-          </div>
-          <p id="budget-subtext" class="text-xs sm:text-sm text-slate-500">
-            You have <span class="font-bold text-slate-800">$2,000.00</span> remaining for this period.
-          </p>
-        </div>
-
-        <!-- Budget & Period Controls Trigger -->
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="text-left md:text-right">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Period Budget Limit</p>
-            <p id="budget-target-display" class="text-lg font-extrabold text-slate-900">$2,000.00</p>
-          </div>
-          <button id="btn-edit-budget" type="button" class="px-3.5 py-2.5 text-xs font-semibold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center gap-1.5 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Budget &amp; Period
-          </button>
-        </div>
-      </div>
-
-      <!-- Expandable Budget & Period Settings Panel -->
-      <form id="budget-settings-panel" class="hidden mt-4 pt-4 border-t border-slate-200 bg-slate-50/80 rounded-xl p-4 space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          <!-- Budget Amount -->
-          <div>
-            <label for="input-budget-amount" class="block text-xs font-semibold text-slate-700 mb-1">Budget Amount ($)</label>
-            <div class="relative">
-              <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-xs font-bold">$</span>
-              <input type="number" id="input-budget-amount" step="0.01" min="1" required placeholder="2000"
-                class="w-full pl-7 pr-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-          </div>
-
-          <!-- Period Type Selector -->
-          <div>
-            <label for="input-period-type" class="block text-xs font-semibold text-slate-700 mb-1">Period Type</label>
-            <select id="input-period-type"
-              class="w-full px-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="calendar">Calendar Month</option>
-              <option value="custom">Custom Date Range</option>
-            </select>
-          </div>
-
-          <!-- Calendar Month Picker -->
-          <div id="period-calendar-group" class="sm:col-span-2 lg:col-span-2">
-            <label for="input-period-month" class="block text-xs font-semibold text-slate-700 mb-1">Select Month &amp; Year</label>
-            <input type="month" id="input-period-month"
-              class="w-full px-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-
-          <!-- Custom Date Range Pickers -->
-          <div id="period-custom-group" class="hidden sm:col-span-2 lg:col-span-2 grid grid-cols-2 gap-3">
-            <div>
-              <label for="input-period-start" class="block text-xs font-semibold text-slate-700 mb-1">Start Date</label>
-              <input type="date" id="input-period-start"
-                class="w-full px-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-            <div>
-              <label for="input-period-end" class="block text-xs font-semibold text-slate-700 mb-1">End Date</label>
-              <input type="date" id="input-period-end"
-                class="w-full px-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-          <p id="period-preview-hint" class="text-xs text-slate-500">Active window: 30 days total</p>
-          <div class="flex items-center gap-2">
-            <button id="btn-cancel-budget" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition cursor-pointer">
-              Cancel
-            </button>
-            <button type="submit" class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition cursor-pointer">
-              Save Settings
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <!-- Progress Bar -->
-      <div class="mt-4">
-        <div class="flex items-center justify-between text-xs font-semibold mb-1.5">
-          <span id="budget-spent-label" class="text-slate-600">Spent: $0.00</span>
-          <span id="budget-pct-label" class="text-slate-700">0% used</span>
-        </div>
-        <div class="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/80">
-          <div id="budget-progress-bar" class="h-full rounded-full bg-indigo-600 transition-all duration-500" style="width: 0%"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 1. Summary KPI Cards -->
-    <section aria-label="Expense Summary" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-      <!-- Total Period Spend -->
-      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-start justify-between">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Period Spend</p>
-          <p id="stat-total" class="mt-2 text-2xl xl:text-3xl font-extrabold text-slate-900">$0.00</p>
-          <p id="stat-count-sub" class="mt-1 text-xs text-slate-500">0 entries in period</p>
-        </div>
-        <div class="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-      </div>
-
-      <!-- Budget Limit -->
-      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-start justify-between">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Budget Limit</p>
-          <p id="stat-budget-limit" class="mt-2 text-2xl xl:text-3xl font-extrabold text-slate-900">$2,000.00</p>
-          <p id="stat-budget-period-sub" class="mt-1 text-xs text-slate-500">Calendar Month</p>
-        </div>
-        <div class="p-2.5 rounded-xl bg-slate-100 text-slate-600 shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-        </div>
-      </div>
-
-      <!-- Remaining Budget -->
-      <div id="kpi-remaining-card" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-start justify-between transition-colors">
-        <div>
-          <p id="kpi-remaining-label" class="text-xs font-semibold uppercase tracking-wider text-slate-400">Remaining Budget</p>
-          <p id="stat-remaining" class="mt-2 text-2xl xl:text-3xl font-extrabold text-emerald-600">$2,000.00</p>
-          <p id="stat-remaining-sub" class="mt-1 text-xs text-slate-500">Of $2,000.00 budget</p>
-        </div>
-        <div id="kpi-remaining-icon" class="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-      </div>
-
-      <!-- Remaining Daily Budget (Daily Allowance) -->
-      <div id="kpi-daily-card" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-start justify-between transition-colors">
-        <div>
-          <p id="kpi-daily-label" class="text-xs font-semibold uppercase tracking-wider text-slate-400">Remaining Daily Budget</p>
-          <p id="stat-daily-budget" class="mt-2 text-2xl xl:text-3xl font-extrabold text-indigo-600">$0.00<span class="text-sm font-semibold text-slate-400">/day</span></p>
-          <p id="stat-daily-sub" class="mt-1 text-xs text-slate-500">Calculating days left...</p>
-        </div>
-        <div id="kpi-daily-icon" class="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <h2 class="text-base font-bold text-slate-900">Budget &amp; Period Overview</h2>
+        <span id="budget-period-badge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
+          <span id="budget-period-label">Nov 1 – Nov 30, 2026</span>
+        </span>
+        <span id="budget-status-badge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+          On Track
+        </span>
+      </div>
+      <p id="budget-subtext" class="text-xs sm:text-sm text-slate-500">
+        You have <span class="font-bold text-slate-800">$2,000.00</span> remaining for this period.
+      </p>
+    </div>
+
+    <!-- Budget & Period Controls Trigger -->
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="text-left md:text-right">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Period Budget Limit</p>
+        <p id="budget-target-display" class="text-lg font-extrabold text-slate-900">$2,000.00</p>
+      </div>
+      <button id="btn-edit-budget" type="button" class="px-3.5 py-2.5 text-xs font-semibold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition flex items-center gap-1.5 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Budget &amp; Period
+      </button>
+    </div>
+  </div>
+
+  <!-- Expandable Budget & Period Settings Panel -->
+  <form id="budget-settings-panel" class="hidden mt-4 pt-4 border-t border-slate-200 bg-slate-50/80 rounded-xl p-4 space-y-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+      <div>
+        <label for="input-budget-amount" class="block text-xs font-semibold text-slate-700 mb-1">Budget Amount ($)</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-xs font-bold">$</span>
+          <input type="number" id="input-budget-amount" step="0.01" min="1" required placeholder="2000"
+            class="w-full pl-7 pr-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
       </div>
 
-      <!-- High-Spend Items (>$100) -->
-      <div class="bg-red-50/70 rounded-2xl p-5 border border-red-200 shadow-sm flex items-start justify-between">
+      <div>
+        <label for="input-period-type" class="block text-xs font-semibold text-slate-700 mb-1">Period Type</label>
+        <select id="input-period-type"
+          class="w-full px-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="calendar">Calendar Month</option>
+          <option value="custom">Custom Date Range</option>
+        </select>
+      </div>
+
+      <div id="period-calendar-group" class="sm:col-span-2 lg:col-span-2">
+        <label for="input-period-month" class="block text-xs font-semibold text-slate-700 mb-1">Select Month &amp; Year</label>
+        <input type="month" id="input-period-month"
+          class="w-full px-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+
+      <div id="period-custom-group" class="hidden sm:col-span-2 lg:col-span-2 grid grid-cols-2 gap-3">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-red-600">High Expenses (&gt;$100)</p>
-          <p id="stat-high-count" class="mt-2 text-2xl xl:text-3xl font-extrabold text-red-700">0</p>
-          <p id="stat-high-sum" class="mt-1 text-xs font-medium text-red-600">$0.00 total in high spend</p>
+          <label for="input-period-start" class="block text-xs font-semibold text-slate-700 mb-1">Start Date</label>
+          <input type="date" id="input-period-start"
+            class="w-full px-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
-        <div class="p-2.5 rounded-xl bg-red-100 text-red-600 shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
+        <div>
+          <label for="input-period-end" class="block text-xs font-semibold text-slate-700 mb-1">End Date</label>
+          <input type="date" id="input-period-end"
+            class="w-full px-3 py-2 text-sm font-semibold rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
-      </div>
-    </section>
-
-    <!-- 2. Main Interactive Grid: Add Form + Chart (Left/Top) & Expense Table (Right/Bottom) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-      <!-- Left Column (4 cols on desktop): Add Expense Form & Category Chart -->
-      <div class="lg:col-span-4 space-y-6">
-
-        <!-- Add Expense Card -->
-        <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
-          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2 mb-4">
-            <span class="w-2 h-5 rounded-full bg-indigo-600 inline-block"></span>
-            Add New Expense
-          </h2>
-
-          <form id="expense-form" class="space-y-4">
-            <div>
-              <label for="input-desc" class="block text-xs font-semibold text-slate-700 mb-1">Item / Description</label>
-              <input type="text" id="input-desc" required placeholder="e.g., Weekly Groceries, Electric Bill"
-                class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label for="input-amount" class="block text-xs font-semibold text-slate-700 mb-1">Amount ($)</label>
-                <div class="relative">
-                  <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm font-semibold">$</span>
-                  <input type="number" id="input-amount" step="0.01" min="0.01" required placeholder="0.00"
-                    class="w-full pl-7 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-                </div>
-              </div>
-
-              <div>
-                <label for="input-date" class="block text-xs font-semibold text-slate-700 mb-1">Date</label>
-                <input type="date" id="input-date" required
-                  class="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-              </div>
-            </div>
-
-            <div>
-              <label for="input-category" class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
-              <select id="input-category"
-                class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
-                <option value="Food">🍔 Food & Dining</option>
-                <option value="Transport">🚇 Transport</option>
-                <option value="Shopping">🛍️ Shopping</option>
-                <option value="Bills">⚡ Bills & Utilities</option>
-                <option value="Entertainment">🎬 Entertainment</option>
-                <option value="Other">📦 Other</option>
-              </select>
-            </div>
-
-            <!-- Live >$100 Preview Hint -->
-            <div id="high-spend-preview" class="hidden rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 font-medium flex items-center gap-2">
-              <span class="inline-block w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
-              This item exceeds $100 and will be highlighted in red.
-            </div>
-
-            <button type="submit"
-              class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Add Expense
-            </button>
-          </form>
-        </div>
-
-        <!-- Spending Breakdown Chart Card -->
-        <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-              <span class="w-2 h-5 rounded-full bg-emerald-500 inline-block"></span>
-              Spending by Category
-            </h2>
-          </div>
-          <div class="relative h-60 w-full flex items-center justify-center">
-            <canvas id="category-chart"></canvas>
-            <div id="chart-empty-state" class="hidden text-center text-xs text-slate-400">
-              Add expenses to see your category breakdown
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Right Column (8 cols on desktop): Filter Controls & Expense Table -->
-      <div class="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-
-        <!-- Filter & Sort Bar -->
-        <div class="p-5 sm:p-6 border-b border-slate-200 space-y-3">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span class="w-2 h-5 rounded-full bg-amber-500 inline-block"></span>
-                Expense History
-              </h2>
-              <p id="filter-status-text" class="text-xs text-slate-500 mt-0.5">Showing expenses in active period</p>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2">
-              <!-- Search Input -->
-              <div class="relative flex-1 sm:flex-initial">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input type="text" id="search-input" placeholder="Search items..."
-                  class="w-full sm:w-44 pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              </div>
-
-              <!-- Over $100 Toggle Pill -->
-              <button id="btn-toggle-high" type="button"
-                class="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition flex items-center gap-1.5 cursor-pointer">
-                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                Over $100 Only
-              </button>
-
-              <!-- Category Filter -->
-              <select id="filter-category" aria-label="Filter by category"
-                class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-                <option value="ALL">All Categories</option>
-                <option value="Food">Food</option>
-                <option value="Transport">Transport</option>
-                <option value="Shopping">Shopping</option>
-                <option value="Bills">Bills</option>
-                <option value="Entertainment">Entertainment</option>
-                <option value="Other">Other</option>
-              </select>
-
-              <!-- Sort Selector -->
-              <select id="sort-by" aria-label="Sort expenses"
-                class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-                <option value="date-desc">Newest First</option>
-                <option value="date-asc">Oldest First</option>
-                <option value="amount-desc">Highest Amount</option>
-                <option value="amount-asc">Lowest Amount</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Outside Period Notice Banner (shown if older/newer expenses exist outside selected period) -->
-          <div id="outside-period-notice" class="hidden rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2">
-            <span id="outside-period-text">0 additional expenses exist outside the selected budget period.</span>
-            <label class="inline-flex items-center gap-1.5 font-semibold text-indigo-600 cursor-pointer select-none">
-              <input type="checkbox" id="toggle-show-all-dates" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-              Show all dates in table
-            </label>
-          </div>
-        </div>
-
-        <!-- Responsive Table Wrapper -->
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                <th class="py-3.5 px-4 sm:px-6">Description</th>
-                <th class="py-3.5 px-3">Category</th>
-                <th class="py-3.5 px-3">Date</th>
-                <th class="py-3.5 px-3 text-right">Amount</th>
-                <th class="py-3.5 px-4 sm:px-6 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody id="expense-table-body" class="divide-y divide-slate-100 text-sm">
-              <!-- Rows dynamically rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Empty Table State -->
-        <div id="empty-state" class="hidden py-14 px-6 text-center">
-          <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-            </svg>
-          </div>
-          <p class="text-sm font-semibold text-slate-700">No matching expenses found</p>
-          <p class="text-xs text-slate-500 mt-1">Try clearing your filters or add a new expense on the left.</p>
-        </div>
-
       </div>
     </div>
-  </main>
 
-  <script>
-    /**
-     * Monthly Expense Tracker Dashboard
-     * Features: Custom Budget Period (Calendar Month or Custom Date Range), Dynamic Daily Allowance,
-     * LocalStorage persistence, >$100 red visual alerting, Chart.js category breakdown, search, filtering & sorting.
-     */
-    const STORAGE_KEY = 'vibe_monthly_expenses_v1';
-    const BUDGET_STORAGE_KEY = 'vibe_monthly_budget_v1';
-    const PERIOD_STORAGE_KEY = 'vibe_budget_period_v1';
-    const DEFAULT_BUDGET = 2000;
-    const HIGH_SPEND_THRESHOLD = 100;
-
-    // Realistic sample expenses (including items in Nov 2026 and late Oct 2026 to demonstrate custom periods)
-    const SAMPLE_EXPENSES = [
-      { id: 'exp-1', description: 'Electricity & Internet Utility Bill', category: 'Bills', amount: 148.50, date: '2026-11-12' },
-      { id: 'exp-2', description: 'Supermarket Weekly Groceries', category: 'Food', amount: 116.80, date: '2026-11-10' },
-      { id: 'exp-3', description: 'Coffee & Lunch with Colleagues', category: 'Food', amount: 24.50, date: '2026-11-09' },
-      { id: 'exp-4', description: 'Winter Jacket & Sneakers', category: 'Shopping', amount: 185.00, date: '2026-11-07' },
-      { id: 'exp-5', description: 'MTR & Airport Express Top-up', category: 'Transport', amount: 42.00, date: '2026-11-05' },
-      { id: 'exp-6', description: 'IMAX Movie Night & Popcorn', category: 'Entertainment', amount: 38.00, date: '2026-11-03' },
-      { id: 'exp-7', description: 'Mobile Phone Monthly Plan', category: 'Bills', amount: 55.00, date: '2026-11-01' },
-      { id: 'exp-8', description: 'Gym & Fitness Membership', category: 'Other', amount: 110.00, date: '2026-10-27' }
-    ];
-
-    // Category color palette & badge styles
-    const CATEGORY_META = {
-      Food:          { color: '#f59e0b', badge: 'bg-amber-100 text-amber-800' },
-      Transport:     { color: '#3b82f6', badge: 'bg-blue-100 text-blue-800' },
-      Shopping:      { color: '#ec4899', badge: 'bg-pink-100 text-pink-800' },
-      Bills:         { color: '#6366f1', badge: 'bg-indigo-100 text-indigo-800' },
-      Entertainment: { color: '#10b981', badge: 'bg-emerald-100 text-emerald-800' },
-      Other:         { color: '#64748b', badge: 'bg-slate-200 text-slate-800' }
-    };
-
-    // Helper: Get local YYYY-MM-DD string
-    function toISODateString(dateObj) {
-      const y = dateObj.getFullYear();
-      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const d = String(dateObj.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    }
-
-    // Helper: Parse YYYY-MM-DD safely in local timezone
-    function parseLocalDate(dateStr) {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      return new Date(y, m - 1, d);
-    }
-
-    // Helper: Get start/end bounds for a YYYY-MM string
-    function getMonthBounds(yearMonth) {
-      const [y, m] = yearMonth.split('-').map(Number);
-      const start = new Date(y, m - 1, 1);
-      const end = new Date(y, m, 0);
-      return {
-        startDate: toISODateString(start),
-        endDate: toISODateString(end)
-      };
-    }
-
-    // Default period: current calendar month (Nov 2026)
-    function getDefaultPeriodSettings() {
-      const now = new Date();
-      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const bounds = getMonthBounds(ym);
-      return {
-        type: 'calendar', // 'calendar' | 'custom'
-        month: ym,
-        startDate: bounds.startDate,
-        endDate: bounds.endDate
-      };
-    }
-
-    // Application State
-    let expenses = [];
-    let monthlyBudget = DEFAULT_BUDGET;
-    let periodSettings = getDefaultPeriodSettings();
-    let filterCategory = 'ALL';
-    let searchQuery = '';
-    let onlyOver100 = false;
-    let showAllDatesInTable = false;
-    let sortBy = 'date-desc';
-    let categoryChart = null;
-
-    // DOM References
-    const budgetCard = document.getElementById('budget-card');
-    const budgetPeriodLabel = document.getElementById('budget-period-label');
-    const budgetStatusBadge = document.getElementById('budget-status-badge');
-    const budgetSubtext = document.getElementById('budget-subtext');
-    const budgetTargetDisplay = document.getElementById('budget-target-display');
-    const btnEditBudget = document.getElementById('btn-edit-budget');
-    const budgetSettingsPanel = document.getElementById('budget-settings-panel');
-    const inputBudgetAmount = document.getElementById('input-budget-amount');
-    const inputPeriodType = document.getElementById('input-period-type');
-    const periodCalendarGroup = document.getElementById('period-calendar-group');
-    const periodCustomGroup = document.getElementById('period-custom-group');
-    const inputPeriodMonth = document.getElementById('input-period-month');
-    const inputPeriodStart = document.getElementById('input-period-start');
-    const inputPeriodEnd = document.getElementById('input-period-end');
-    const periodPreviewHint = document.getElementById('period-preview-hint');
-    const btnCancelBudget = document.getElementById('btn-cancel-budget');
-    const budgetSpentLabel = document.getElementById('budget-spent-label');
-    const budgetPctLabel = document.getElementById('budget-pct-label');
-    const budgetProgressBar = document.getElementById('budget-progress-bar');
-
-    const form = document.getElementById('expense-form');
-    const inputDesc = document.getElementById('input-desc');
-    const inputAmount = document.getElementById('input-amount');
-    const inputDate = document.getElementById('input-date');
-    const inputCategory = document.getElementById('input-category');
-    const highSpendPreview = document.getElementById('high-spend-preview');
-
-    const tableBody = document.getElementById('expense-table-body');
-    const emptyState = document.getElementById('empty-state');
-    const filterStatusText = document.getElementById('filter-status-text');
-    const outsidePeriodNotice = document.getElementById('outside-period-notice');
-    const outsidePeriodText = document.getElementById('outside-period-text');
-    const toggleShowAllDates = document.getElementById('toggle-show-all-dates');
-
-    const searchInput = document.getElementById('search-input');
-    const btnToggleHigh = document.getElementById('btn-toggle-high');
-    const selectFilterCat = document.getElementById('filter-category');
-    const selectSortBy = document.getElementById('sort-by');
-    const btnExportCsv = document.getElementById('btn-export-csv');
-    const btnResetSample = document.getElementById('btn-reset-sample');
-    const btnClearAll = document.getElementById('btn-clear-all');
-
-    // Format number as USD currency
-    function formatCurrency(num) {
-      return '$' + Number(num).toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      });
-    }
-
-    // Format YYYY-MM-DD into readable date (e.g., Nov 12, 2026)
-    function formatDisplayDate(dateStr) {
-      if (!dateStr) return '';
-      const parts = dateStr.split('-');
-      if (parts.length !== 3) return dateStr;
-      const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-      return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-
-    // Format active period label (e.g., "Nov 1 – Nov 30, 2026" or "Oct 25, 2026 – Nov 24, 2026")
-    function formatPeriodRangeLabel(startStr, endStr) {
-      const s = parseLocalDate(startStr);
-      const e = parseLocalDate(endStr);
-      const sameYear = s.getFullYear() === e.getFullYear();
-      const startFmt = s.toLocaleDateString('en-US', sameYear
-        ? { month: 'short', day: 'numeric' }
-        : { month: 'short', day: 'numeric', year: 'numeric' });
-      const endFmt = e.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      return `${startFmt} – ${endFmt}`;
-    }
-
-    // Get resolved start & end ISO strings for active period
-    function getActivePeriodBounds() {
-      if (periodSettings.type === 'calendar' && periodSettings.month) {
-        return getMonthBounds(periodSettings.month);
-      }
-      return {
-        startDate: periodSettings.startDate,
-        endDate: periodSettings.endDate
-      };
-    }
-
-    // Check if an expense falls within the active budget period
-    function isWithinActivePeriod(dateStr) {
-      const { startDate, endDate } = getActivePeriodBounds();
-      return dateStr >= startDate && dateStr <= endDate;
-    }
-
-    // Get all expenses within the active budget period
-    function getPeriodExpenses() {
-      return expenses.filter(item => isWithinActivePeriod(item.date));
-    }
-
-    // Show non-intrusive toast message
-    function showToast(message, type = 'info') {
-      const container = document.getElementById('toast-container');
-      const toast = document.createElement('div');
-      const colors = type === 'danger'
-        ? 'bg-red-600 text-white'
-        : type === 'success'
-        ? 'bg-emerald-600 text-white'
-        : 'bg-slate-900 text-white';
-
-      toast.className = `${colors} px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 transition-all duration-300 transform translate-y-2 opacity-0`;
-      toast.textContent = message;
-      container.appendChild(toast);
-
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
-      });
-
-      setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-y-2');
-        setTimeout(() => toast.remove(), 300);
-      }, 2600);
-    }
-
-    // Load expenses, budget, and period settings from LocalStorage
-    function loadState() {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved !== null) {
-          expenses = JSON.parse(saved);
-        } else {
-          expenses = [...SAMPLE_EXPENSES];
-          saveExpenses();
-        }
-      } catch (err) {
-        console.error('Failed to read expenses from localStorage:', err);
-        expenses = [...SAMPLE_EXPENSES];
-      }
-
-      try {
-        const savedBudget = localStorage.getItem(BUDGET_STORAGE_KEY);
-        if (savedBudget !== null && !isNaN(parseFloat(savedBudget)) && parseFloat(savedBudget) > 0) {
-          monthlyBudget = parseFloat(savedBudget);
-        } else {
-          monthlyBudget = DEFAULT_BUDGET;
-        }
-      } catch (err) {
-        monthlyBudget = DEFAULT_BUDGET;
-      }
-
-      try {
-        const savedPeriod = localStorage.getItem(PERIOD_STORAGE_KEY);
-        if (savedPeriod !== null) {
-          const parsed = JSON.parse(savedPeriod);
-          if (parsed && parsed.startDate && parsed.endDate) {
-            periodSettings = parsed;
-          }
-        }
-      } catch (err) {
-        periodSettings = getDefaultPeriodSettings();
-      }
-    }
-
-    function saveExpenses() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-      } catch (err) {
-        console.error('Failed to save expenses:', err);
-      }
-    }
-
-    function saveBudgetAndPeriod() {
-      try {
-        localStorage.setItem(BUDGET_STORAGE_KEY, String(monthlyBudget));
-        localStorage.setItem(PERIOD_STORAGE_KEY, JSON.stringify(periodSettings));
-      } catch (err) {
-        console.error('Failed to save budget settings:', err);
-      }
-    }
-
-    // Update the 5 KPI cards for the active budget period
-    function updateSummaryCards() {
-      const periodItems = getPeriodExpenses();
-      const total = periodItems.reduce((sum, item) => sum + item.amount, 0);
-      const highItems = periodItems.filter(item => item.amount > HIGH_SPEND_THRESHOLD);
-      const highSum = highItems.reduce((sum, item) => sum + item.amount, 0);
-
-      document.getElementById('stat-total').textContent = formatCurrency(total);
-      document.getElementById('stat-count-sub').textContent = `${periodItems.length} ${periodItems.length === 1 ? 'entry' : 'entries'} in period`;
-
-      document.getElementById('stat-budget-limit').textContent = formatCurrency(monthlyBudget);
-      document.getElementById('stat-budget-period-sub').textContent = periodSettings.type === 'calendar'
-        ? 'Calendar Month'
-        : 'Custom Date Range';
-
-      document.getElementById('stat-high-count').textContent = highItems.length;
-      document.getElementById('stat-high-sum').textContent = `${formatCurrency(highSum)} total in high spend`;
-
-      updateBudgetUI(total);
-    }
-
-    // Update Budget Progress Bar, Period Label & Remaining Budget KPI
-    function updateBudgetUI(totalSpent) {
-      const { startDate, endDate } = getActivePeriodBounds();
-      budgetPeriodLabel.textContent = formatPeriodRangeLabel(startDate, endDate);
-
-      const remaining = monthlyBudget - totalSpent;
-      const pctRaw = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
-      const pctDisplay = Math.round(pctRaw);
-      const barWidth = Math.min(pctRaw, 100);
-
-      budgetTargetDisplay.textContent = formatCurrency(monthlyBudget);
-      budgetSpentLabel.textContent = `Spent: ${formatCurrency(totalSpent)}`;
-      budgetPctLabel.textContent = `${pctDisplay}% used`;
-      budgetProgressBar.style.width = `${barWidth}%`;
-
-      budgetCard.classList.remove('border-slate-200', 'border-amber-300', 'bg-amber-50/30', 'border-red-300', 'bg-red-50/40', 'bg-white');
-      budgetProgressBar.classList.remove('bg-indigo-600', 'bg-emerald-500', 'bg-amber-500', 'bg-red-600');
-      budgetStatusBadge.classList.remove('bg-emerald-100', 'text-emerald-800', 'bg-amber-100', 'text-amber-800', 'bg-red-100', 'text-red-700');
-
-      const kpiRemCard = document.getElementById('kpi-remaining-card');
-      const kpiRemLabel = document.getElementById('kpi-remaining-label');
-      const statRem = document.getElementById('stat-remaining');
-      const statRemSub = document.getElementById('stat-remaining-sub');
-      const kpiRemIcon = document.getElementById('kpi-remaining-icon');
-
-      kpiRemCard.classList.remove('bg-white', 'border-slate-200', 'bg-red-50/70', 'border-red-200', 'bg-amber-50/60', 'border-amber-200');
-      statRem.classList.remove('text-emerald-600', 'text-amber-600', 'text-red-600');
-      kpiRemIcon.classList.remove('bg-emerald-50', 'text-emerald-600', 'bg-amber-100', 'text-amber-600', 'bg-red-100', 'text-red-600');
-
-      if (pctRaw > 100) {
-        const overAmt = Math.abs(remaining);
-        budgetCard.classList.add('border-red-300', 'bg-red-50/40');
-        budgetProgressBar.classList.add('bg-red-600');
-        budgetStatusBadge.classList.add('bg-red-100', 'text-red-700');
-        budgetStatusBadge.textContent = 'Over Budget';
-        budgetSubtext.innerHTML = `Alert: You have exceeded your period budget by <span class="font-bold text-red-600">${formatCurrency(overAmt)}</span>.`;
-
-        kpiRemCard.classList.add('bg-red-50/70', 'border-red-200');
-        kpiRemLabel.textContent = 'Over Budget By';
-        statRem.classList.add('text-red-600');
-        statRem.textContent = formatCurrency(overAmt);
-        statRemSub.textContent = `Limit: ${formatCurrency(monthlyBudget)}`;
-        kpiRemIcon.classList.add('bg-red-100', 'text-red-600');
-      } else if (pctRaw >= 80) {
-        budgetCard.classList.add('border-amber-300', 'bg-amber-50/30');
-        budgetProgressBar.classList.add('bg-amber-500');
-        budgetStatusBadge.classList.add('bg-amber-100', 'text-amber-800');
-        budgetStatusBadge.textContent = 'Nearing Limit';
-        budgetSubtext.innerHTML = `Careful: Only <span class="font-bold text-amber-700">${formatCurrency(remaining)}</span> remaining for this period.`;
-
-        kpiRemCard.classList.add('bg-amber-50/60', 'border-amber-200');
-        kpiRemLabel.textContent = 'Remaining Budget';
-        statRem.classList.add('text-amber-600');
-        statRem.textContent = formatCurrency(remaining);
-        statRemSub.textContent = `Of ${formatCurrency(monthlyBudget)} limit`;
-        kpiRemIcon.classList.add('bg-amber-100', 'text-amber-600');
-      } else {
-        budgetCard.classList.add('bg-white', 'border-slate-200');
-        budgetProgressBar.classList.add('bg-indigo-600');
-        budgetStatusBadge.classList.add('bg-emerald-100', 'text-emerald-800');
-        budgetStatusBadge.textContent = 'On Track';
-        budgetSubtext.innerHTML = `You have <span class="font-bold text-slate-800">${formatCurrency(remaining)}</span> remaining for this period.`;
-
-        kpiRemCard.classList.add('bg-white', 'border-slate-200');
-        kpiRemLabel.textContent = 'Remaining Budget';
-        statRem.classList.add('text-emerald-600');
-        statRem.textContent = formatCurrency(remaining);
-        statRemSub.textContent = `Of ${formatCurrency(monthlyBudget)} limit`;
-        kpiRemIcon.classList.add('bg-emerald-50', 'text-emerald-600');
-      }
-
-      updateDailyBudgetUI(remaining, startDate, endDate);
-    }
-
-    // Dynamic Remaining Daily Budget Calculation based on active period
-    function updateDailyBudgetUI(remaining, startDateStr, endDateStr) {
-      const kpiDailyCard = document.getElementById('kpi-daily-card');
-      const kpiDailyLabel = document.getElementById('kpi-daily-label');
-      const statDailyBudget = document.getElementById('stat-daily-budget');
-      const statDailySub = document.getElementById('stat-daily-sub');
-      const kpiDailyIcon = document.getElementById('kpi-daily-icon');
-
-      kpiDailyCard.classList.remove('bg-white', 'border-slate-200', 'bg-red-50/70', 'border-red-200', 'bg-amber-50/60', 'border-amber-200');
-      statDailyBudget.classList.remove('text-indigo-600', 'text-amber-600', 'text-red-600', 'text-slate-500');
-      kpiDailyIcon.classList.remove('bg-indigo-50', 'text-indigo-600', 'bg-amber-100', 'text-amber-600', 'bg-red-100', 'text-red-600', 'bg-slate-100', 'text-slate-500');
-
-      const MS_PER_DAY = 24 * 60 * 60 * 1000;
-      const now = new Date();
-      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const startObj = parseLocalDate(startDateStr);
-      const endObj = parseLocalDate(endDateStr);
-
-      const totalPeriodDays = Math.max(1, Math.round((endObj - startObj) / MS_PER_DAY) + 1);
-      const isBeforePeriod = todayMidnight < startObj;
-      const isAfterPeriod = todayMidnight > endObj;
-
-      let daysLeft = 0;
-      if (isBeforePeriod) {
-        daysLeft = totalPeriodDays;
-      } else if (!isAfterPeriod) {
-        daysLeft = Math.max(1, Math.round((endObj - todayMidnight) / MS_PER_DAY) + 1);
-      }
-
-      kpiDailyLabel.textContent = 'Remaining Daily Budget';
-
-      if (isAfterPeriod) {
-        kpiDailyCard.classList.add('bg-white', 'border-slate-200');
-        statDailyBudget.classList.add('text-slate-500');
-        statDailyBudget.innerHTML = `$0.00<span class="text-sm font-semibold text-slate-400">/day</span>`;
-        statDailySub.textContent = 'Period Ended';
-        kpiDailyIcon.classList.add('bg-slate-100', 'text-slate-500');
-      } else if (remaining <= 0) {
-        kpiDailyCard.classList.add('bg-red-50/70', 'border-red-200');
-        statDailyBudget.classList.add('text-red-600');
-        statDailyBudget.innerHTML = `$0.00<span class="text-sm font-semibold text-red-400">/day</span>`;
-        statDailySub.textContent = `Budget exceeded (${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left)`;
-        kpiDailyIcon.classList.add('bg-red-100', 'text-red-600');
-      } else {
-        const dailyAllowance = remaining / daysLeft;
-        const isTightDaily = dailyAllowance < 15;
-
-        if (isTightDaily) {
-          kpiDailyCard.classList.add('bg-amber-50/60', 'border-amber-200');
-          statDailyBudget.classList.add('text-amber-600');
-          kpiDailyIcon.classList.add('bg-amber-100', 'text-amber-600');
-        } else {
-          kpiDailyCard.classList.add('bg-white', 'border-slate-200');
-          statDailyBudget.classList.add('text-indigo-600');
-          kpiDailyIcon.classList.add('bg-indigo-50', 'text-indigo-600');
-        }
-
-        statDailyBudget.innerHTML = `${formatCurrency(dailyAllowance)}<span class="text-sm font-semibold text-slate-400">/day</span>`;
-        statDailySub.textContent = isBeforePeriod
-          ? `across ${daysLeft} days (upcoming period)`
-          : `across ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left (incl. today)`;
-      }
-    }
-
-    // Update Donut Chart using Chart.js for active period expenses
-    function updateCategoryChart() {
-      const ctx = document.getElementById('category-chart');
-      const chartEmpty = document.getElementById('chart-empty-state');
-      const periodItems = getPeriodExpenses();
-
-      if (periodItems.length === 0) {
-        if (categoryChart) {
-          categoryChart.destroy();
-          categoryChart = null;
-        }
-        ctx.classList.add('hidden');
-        chartEmpty.classList.remove('hidden');
-        return;
-      }
-
-      ctx.classList.remove('hidden');
-      chartEmpty.classList.add('hidden');
-
-      const totalsByCat = {};
-      periodItems.forEach(item => {
-        totalsByCat[item.category] = (totalsByCat[item.category] || 0) + item.amount;
-      });
-
-      const labels = Object.keys(totalsByCat);
-      const dataValues = labels.map(cat => Math.round(totalsByCat[cat] * 100) / 100);
-      const bgColors = labels.map(cat => (CATEGORY_META[cat] ? CATEGORY_META[cat].color : CATEGORY_META.Other.color));
-
-      if (categoryChart) {
-        categoryChart.data.labels = labels;
-        categoryChart.data.datasets[0].data = dataValues;
-        categoryChart.data.datasets[0].backgroundColor = bgColors;
-        categoryChart.update();
-        return;
-      }
-
-      categoryChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels,
-          datasets: [{
-            data: dataValues,
-            backgroundColor: bgColors,
-            borderWidth: 2,
-            borderColor: '#ffffff',
-            hoverOffset: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: '64%',
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                boxWidth: 10,
-                boxHeight: 10,
-                usePointStyle: true,
-                pointStyle: 'circle',
-                padding: 14,
-                font: { family: 'Inter', size: 11, weight: '600' }
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: (context) => {
-                  const val = context.parsed || 0;
-                  const sum = context.dataset.data.reduce((a, b) => a + b, 0);
-                  const pct = sum > 0 ? Math.round((val / sum) * 100) : 0;
-                  return ` ${context.label}: ${formatCurrency(val)} (${pct}%)`;
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-
-    // Filter, search, sort, and render expense rows
-    function renderTable() {
-      const outsideCount = expenses.filter(item => !isWithinActivePeriod(item.date)).length;
-      if (outsideCount > 0) {
-        outsidePeriodNotice.classList.remove('hidden');
-        outsidePeriodText.textContent = `${outsideCount} ${outsideCount === 1 ? 'expense exists' : 'expenses exist'} outside the active budget period.`;
-      } else {
-        outsidePeriodNotice.classList.add('hidden');
-        showAllDatesInTable = false;
-        toggleShowAllDates.checked = false;
-      }
-
-      let filtered = expenses.filter(item => {
-        const matchesPeriod = showAllDatesInTable || isWithinActivePeriod(item.date);
-        const matchesCat = filterCategory === 'ALL' || item.category === filterCategory;
-        const matchesHigh = !onlyOver100 || item.amount > HIGH_SPEND_THRESHOLD;
-        const matchesSearch = !searchQuery ||
-          item.description.toLowerCase().includes(searchQuery) ||
-          item.category.toLowerCase().includes(searchQuery);
-        return matchesPeriod && matchesCat && matchesHigh && matchesSearch;
-      });
-
-      filtered.sort((a, b) => {
-        if (sortBy === 'date-desc') return b.date.localeCompare(a.date);
-        if (sortBy === 'date-asc') return a.date.localeCompare(b.date);
-        if (sortBy === 'amount-desc') return b.amount - a.amount;
-        if (sortBy === 'amount-asc') return a.amount - b.amount;
-        return 0;
-      });
-
-      const parts = [];
-      parts.push(showAllDatesInTable ? 'All dates' : 'Active period');
-      if (filterCategory !== 'ALL') parts.push(`Category: ${filterCategory}`);
-      if (onlyOver100) parts.push('Over $100 only');
-      if (searchQuery) parts.push(`Search: "${searchQuery}"`);
-      filterStatusText.textContent = `Showing ${filtered.length} item(s) (${parts.join(' • ')})`;
-
-      tableBody.innerHTML = '';
-
-      if (filtered.length === 0) {
-        emptyState.classList.remove('hidden');
-        return;
-      }
-
-      emptyState.classList.add('hidden');
-
-      filtered.forEach(item => {
-        const isHighSpend = item.amount > HIGH_SPEND_THRESHOLD;
-        const inPeriod = isWithinActivePeriod(item.date);
-        const catStyle = CATEGORY_META[item.category] ? CATEGORY_META[item.category].badge : CATEGORY_META.Other.badge;
-
-        const tr = document.createElement('tr');
-        tr.className = isHighSpend
-          ? 'bg-red-50/90 hover:bg-red-100/80 transition border-l-4 border-l-red-500'
-          : 'hover:bg-slate-50/90 transition';
-
-        tr.innerHTML = `
-          <td class="py-3.5 px-4 sm:px-6">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="font-semibold ${isHighSpend ? 'text-red-950' : 'text-slate-800'}">${escapeHTML(item.description)}</span>
-              ${isHighSpend
-                ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-600"></span>&gt;$100</span>'
-                : ''}
-              ${!inPeriod
-                ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-200 text-slate-600">Outside Period</span>'
-                : ''}
+    <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+      <p id="period-preview-hint" class="text-xs text-slate-500">Active window: 30 days total</p>
+      <div class="flex items-center gap-2">
+        <button id="btn-cancel-budget" type="button" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition cursor-pointer">
+          Cancel
+        </button>
+        <button type="submit" class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition cursor-pointer">
+          Save Settings
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Progress Bar -->
+  <div class="mt-4">
+    <div class="flex items-center justify-between text-xs font-semibold mb-1.5">
+      <span id="budget-spent-label" class="text-slate-600">Spent: $0.00</span>
+      <span id="budget-pct-label" class="text-slate-700">0% used</span>
+    </div>
+    <div class="w-full h-3.5 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/80">
+      <div id="budget-progress-bar" class="h-full rounded-full bg-indigo-600 transition-all duration-500" style="width: 0%"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 1. Summary KPI Cards -->
+<section aria-label="Expense Summary" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+  <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-start justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Period Spend</p>
+      <p id="stat-total" class="mt-2 text-2xl xl:text-3xl font-extrabold text-slate-900">$0.00</p>
+      <p id="stat-count-sub" class="mt-1 text-xs text-slate-500">0 entries in period</p>
+    </div>
+    <div class="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-start justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Budget Limit</p>
+      <p id="stat-budget-limit" class="mt-2 text-2xl xl:text-3xl font-extrabold text-slate-900">$2,000.00</p>
+      <p id="stat-budget-period-sub" class="mt-1 text-xs text-slate-500">Calendar Month</p>
+    </div>
+    <div class="p-2.5 rounded-xl bg-slate-100 text-slate-600 shrink-0">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    </div>
+  </div>
+
+  <div id="kpi-remaining-card" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-start justify-between transition-colors">
+    <div>
+      <p id="kpi-remaining-label" class="text-xs font-semibold uppercase tracking-wider text-slate-400">Remaining Budget</p>
+      <p id="stat-remaining" class="mt-2 text-2xl xl:text-3xl font-extrabold text-emerald-600">$2,000.00</p>
+      <p id="stat-remaining-sub" class="mt-1 text-xs text-slate-500">Of $2,000.00 budget</p>
+    </div>
+    <div id="kpi-remaining-icon" class="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+  </div>
+
+  <div id="kpi-daily-card" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-start justify-between transition-colors">
+    <div>
+      <p id="kpi-daily-label" class="text-xs font-semibold uppercase tracking-wider text-slate-400">Remaining Daily Budget</p>
+      <p id="stat-daily-budget" class="mt-2 text-2xl xl:text-3xl font-extrabold text-indigo-600">$0.00<span class="text-sm font-semibold text-slate-400">/day</span></p>
+      <p id="stat-daily-sub" class="mt-1 text-xs text-slate-500">Calculating days left...</p>
+    </div>
+    <div id="kpi-daily-icon" class="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    </div>
+  </div>
+
+  <div class="bg-red-50/70 rounded-2xl p-5 border border-red-200 shadow-sm flex items-start justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-red-600">High Expenses (&gt;$100)</p>
+      <p id="stat-high-count" class="mt-2 text-2xl xl:text-3xl font-extrabold text-red-700">0</p>
+      <p id="stat-high-sum" class="mt-1 text-xs font-medium text-red-600">$0.00 total in high spend</p>
+    </div>
+    <div class="p-2.5 rounded-xl bg-red-100 text-red-600 shrink-0">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Main Interactive Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+  <div class="lg:col-span-4 space-y-6">
+    <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2 mb-4">
+        <span class="w-2 h-5 rounded-full bg-indigo-600 inline-block"></span>
+        Add New Expense
+      </h2>
+
+      <form id="expense-form" class="space-y-4">
+        <div>
+          <label for="input-desc" class="block text-xs font-semibold text-slate-700 mb-1">Item / Description</label>
+          <input type="text" id="input-desc" required placeholder="e.g., Weekly Groceries, Electric Bill"
+            class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="input-amount" class="block text-xs font-semibold text-slate-700 mb-1">Amount ($)</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm font-semibold">$</span>
+              <input type="number" id="input-amount" step="0.01" min="0.01" required placeholder="0.00"
+                class="w-full pl-7 pr-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
             </div>
-          </td>
-          <td class="py-3.5 px-3 whitespace-nowrap">
-            <span class="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold ${catStyle}">
-              ${escapeHTML(item.category)}
-            </span>
-          </td>
-          <td class="py-3.5 px-3 whitespace-nowrap text-xs ${isHighSpend ? 'text-red-800 font-medium' : 'text-slate-500'}">
-            ${formatDisplayDate(item.date)}
-          </td>
-          <td class="py-3.5 px-3 whitespace-nowrap text-right font-mono ${isHighSpend ? 'text-red-600 font-extrabold text-base' : 'text-slate-800 font-semibold'}">
-            ${formatCurrency(item.amount)}
-          </td>
-          <td class="py-3.5 px-4 sm:px-6 whitespace-nowrap text-right">
-            <button type="button" data-id="${item.id}" aria-label="Delete ${escapeHTML(item.description)}"
-              class="btn-delete p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-100/70 transition cursor-pointer">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </td>
-        `;
+          </div>
 
-        tableBody.appendChild(tr);
-      });
-    }
+          <div>
+            <label for="input-date" class="block text-xs font-semibold text-slate-700 mb-1">Date</label>
+            <input type="date" id="input-date" required
+              class="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+          </div>
+        </div>
 
-    function escapeHTML(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    }
+        <div>
+          <label for="input-category" class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+          <select id="input-category"
+            class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+            <option value="Food">🍔 Food & Dining</option>
+            <option value="Transport">🚇 Transport</option>
+            <option value="Shopping">🛍️ Shopping</option>
+            <option value="Bills">⚡ Bills & Utilities</option>
+            <option value="Entertainment">🎬 Entertainment</option>
+            <option value="Other">📦 Other</option>
+          </select>
+        </div>
 
-    function renderDashboard() {
-      updateSummaryCards();
-      renderTable();
-      updateCategoryChart();
-    }
+        <div id="high-spend-preview" class="hidden rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 font-medium flex items-center gap-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+          This item exceeds $100 and will be highlighted in red.
+        </div>
 
-    // Update live preview hint inside the Budget & Period Settings panel
-    function updatePeriodSettingsPreview() {
-      const type = inputPeriodType.value;
-      let startStr = '';
-      let endStr = '';
+        <button type="submit"
+          class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Expense
+        </button>
+      </form>
+    </div>
 
-      if (type === 'calendar') {
-        periodCalendarGroup.classList.remove('hidden');
-        periodCustomGroup.classList.add('hidden');
-        if (inputPeriodMonth.value) {
-          const bounds = getMonthBounds(inputPeriodMonth.value);
-          startStr = bounds.startDate;
-          endStr = bounds.endDate;
-        }
-      } else {
-        periodCalendarGroup.classList.add('hidden');
-        periodCustomGroup.classList.remove('hidden');
-        startStr = inputPeriodStart.value;
-        endStr = inputPeriodEnd.value;
-      }
+    <div class="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <span class="w-2 h-5 rounded-full bg-emerald-500 inline-block"></span>
+          Spending by Category
+        </h2>
+      </div>
+      <div class="relative h-60 w-full flex items-center justify-center">
+        <canvas id="category-chart"></canvas>
+        <div id="chart-empty-state" class="hidden text-center text-xs text-slate-400">
+          Add expenses to see your category breakdown
+        </div>
+      </div>
+    </div>
+  </div>
 
-      if (startStr && endStr && endStr >= startStr) {
-        const MS_PER_DAY = 24 * 60 * 60 * 1000;
-        const days = Math.round((parseLocalDate(endStr) - parseLocalDate(startStr)) / MS_PER_DAY) + 1;
-        periodPreviewHint.textContent = `Active window: ${formatPeriodRangeLabel(startStr, endStr)} (${days} ${days === 1 ? 'day' : 'days'})`;
-        periodPreviewHint.classList.remove('text-red-600');
-        periodPreviewHint.classList.add('text-slate-500');
-      } else {
-        periodPreviewHint.textContent = 'Please select a valid end date on or after the start date.';
-        periodPreviewHint.classList.remove('text-slate-500');
-        periodPreviewHint.classList.add('text-red-600');
-      }
-    }
+  <div class="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-5 sm:p-6 border-b border-slate-200 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-2 h-5 rounded-full bg-amber-500 inline-block"></span>
+            Expense History
+          </h2>
+          <p id="filter-status-text" class="text-xs text-slate-500 mt-0.5">Showing expenses in active period</p>
+        </div>
 
-    // Open Budget & Period Settings Panel
-    btnEditBudget.addEventListener('click', () => {
-      const isHidden = budgetSettingsPanel.classList.contains('hidden');
-      if (!isHidden) {
-        budgetSettingsPanel.classList.add('hidden');
-        return;
-      }
-      inputBudgetAmount.value = monthlyBudget;
-      inputPeriodType.value = periodSettings.type;
-      const { startDate, endDate } = getActivePeriodBounds();
-      inputPeriodMonth.value = periodSettings.month || startDate.slice(0, 7);
-      inputPeriodStart.value = startDate;
-      inputPeriodEnd.value = endDate;
-      updatePeriodSettingsPreview();
-      budgetSettingsPanel.classList.remove('hidden');
-      inputBudgetAmount.focus();
-    });
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative flex-1 sm:flex-initial">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input type="text" id="search-input" placeholder="Search items..."
+              class="w-full sm:w-44 pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
 
-    btnCancelBudget.addEventListener('click', () => {
-      budgetSettingsPanel.classList.add('hidden');
-    });
+          <button id="btn-toggle-high" type="button"
+            class="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition flex items-center gap-1.5 cursor-pointer">
+            <span class="w-2 h-2 rounded-full bg-red-500"></span>
+            Over $100 Only
+          </button>
 
-    inputPeriodType.addEventListener('change', updatePeriodSettingsPreview);
-    inputPeriodMonth.addEventListener('change', updatePeriodSettingsPreview);
-    inputPeriodStart.addEventListener('change', updatePeriodSettingsPreview);
-    inputPeriodEnd.addEventListener('change', updatePeriodSettingsPreview);
+          <select id="filter-category" aria-label="Filter by category"
+            class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+            <option value="ALL">All Categories</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Bills">Bills</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Other">Other</option>
+          </select>
 
-    budgetSettingsPanel.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const newBudget = parseFloat(inputBudgetAmount.value);
-      if (isNaN(newBudget) || newBudget <= 0) {
-        showToast('Please enter a valid budget amount greater than $0.', 'danger');
-        return;
-      }
+          <select id="sort-by" aria-label="Sort expenses"
+            class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+            <option value="amount-desc">Highest Amount</option>
+            <option value="amount-asc">Lowest Amount</option>
+          </select>
+        </div>
+      </div>
 
-      const type = inputPeriodType.value;
-      if (type === 'calendar') {
-        if (!inputPeriodMonth.value) {
-          showToast('Please choose a valid month and year.', 'danger');
-          return;
-        }
-        const bounds = getMonthBounds(inputPeriodMonth.value);
-        periodSettings = {
-          type: 'calendar',
-          month: inputPeriodMonth.value,
-          startDate: bounds.startDate,
-          endDate: bounds.endDate
-        };
-      } else {
-        const s = inputPeriodStart.value;
-        const en = inputPeriodEnd.value;
-        if (!s || !en || en < s) {
-          showToast('End date must be on or after the start date.', 'danger');
-          return;
-        }
-        periodSettings = {
-          type: 'custom',
-          month: s.slice(0, 7),
-          startDate: s,
-          endDate: en
-        };
-      }
+      <div id="outside-period-notice" class="hidden rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2">
+        <span id="outside-period-text">0 additional expenses exist outside the selected budget period.</span>
+        <label class="inline-flex items-center gap-1.5 font-semibold text-indigo-600 cursor-pointer select-none">
+          <input type="checkbox" id="toggle-show-all-dates" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+          Show all dates in table
+        </label>
+      </div>
+    </div>
 
-      monthlyBudget = Math.round(newBudget * 100) / 100;
-      saveBudgetAndPeriod();
-      budgetSettingsPanel.classList.add('hidden');
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <th class="py-3.5 px-4 sm:px-6">Description</th>
+            <th class="py-3.5 px-3">Category</th>
+            <th class="py-3.5 px-3">Date</th>
+            <th class="py-3.5 px-3 text-right">Amount</th>
+            <th class="py-3.5 px-4 sm:px-6 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody id="expense-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+      </table>
+    </div>
 
-      // Keep add-expense default date inside active period if needed
-      const { startDate, endDate } = getActivePeriodBounds();
-      if (inputDate.value < startDate || inputDate.value > endDate) {
-        const todayStr = toISODateString(new Date());
-        inputDate.value = (todayStr >= startDate && todayStr <= endDate) ? todayStr : startDate;
-      }
-
-      renderDashboard();
-      showToast(`Saved: ${formatCurrency(monthlyBudget)} (${formatPeriodRangeLabel(startDate, endDate)})`, 'success');
-    });
-
-    // Add Expense Form Submission
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const description = inputDesc.value.trim();
-      const amount = parseFloat(inputAmount.value);
-      const date = inputDate.value;
-      const category = inputCategory.value;
-
-      if (!description || isNaN(amount) || amount <= 0 || !date) {
-        showToast('Please enter a valid description, amount, and date.', 'danger');
-        return;
-      }
-
-      const newExpense = {
-        id: 'exp-' + Date.now(),
-        description,
-        category,
-        amount: Math.round(amount * 100) / 100,
-        date
-      };
-
-      expenses.unshift(newExpense);
-      saveExpenses();
-      renderDashboard();
-
-      inputDesc.value = '';
-      inputAmount.value = '';
-      highSpendPreview.classList.add('hidden');
-      inputDesc.focus();
-
-      if (!isWithinActivePeriod(date)) {
-        showToast(`Added "${description}" (outside current budget period)`);
-      } else if (newExpense.amount > HIGH_SPEND_THRESHOLD) {
-        showToast(`Added "${description}" (${formatCurrency(newExpense.amount)}) — Flagged as >$100!`, 'danger');
-      } else {
-        showToast(`Added "${description}" (${formatCurrency(newExpense.amount)})`, 'success');
-      }
-    });
-
-    inputAmount.addEventListener('input', () => {
-      const val = parseFloat(inputAmount.value);
-      if (!isNaN(val) && val > HIGH_SPEND_THRESHOLD) {
-        highSpendPreview.classList.remove('hidden');
-      } else {
-        highSpendPreview.classList.add('hidden');
-      }
-    });
-
-    tableBody.addEventListener('click', (e) => {
-      const delBtn = e.target.closest('.btn-delete');
-      if (!delBtn) return;
-      const id = delBtn.getAttribute('data-id');
-      const target = expenses.find(item => item.id === id);
-      expenses = expenses.filter(item => item.id !== id);
-      saveExpenses();
-      renderDashboard();
-      if (target) {
-        showToast(`Removed "${target.description}"`);
-      }
-    });
-
-    searchInput.addEventListener('input', (e) => {
-      searchQuery = e.target.value.trim().toLowerCase();
-      renderTable();
-    });
-
-    btnToggleHigh.addEventListener('click', () => {
-      onlyOver100 = !onlyOver100;
-      if (onlyOver100) {
-        btnToggleHigh.classList.remove('bg-white', 'text-slate-700', 'border-slate-300');
-        btnToggleHigh.classList.add('bg-red-600', 'text-white', 'border-red-600', 'shadow-sm');
-      } else {
-        btnToggleHigh.classList.add('bg-white', 'text-slate-700', 'border-slate-300');
-        btnToggleHigh.classList.remove('bg-red-600', 'text-white', 'border-red-600', 'shadow-sm');
-      }
-      renderTable();
-    });
-
-    selectFilterCat.addEventListener('change', (e) => {
-      filterCategory = e.target.value;
-      renderTable();
-    });
-
-    selectSortBy.addEventListener('change', (e) => {
-      sortBy = e.target.value;
-      renderTable();
-    });
-
-    toggleShowAllDates.addEventListener('change', (e) => {
-      showAllDatesInTable = e.target.checked;
-      renderTable();
-    });
-
-    // Export Active Period Expenses as CSV
-    btnExportCsv.addEventListener('click', () => {
-      const items = showAllDatesInTable ? expenses : getPeriodExpenses();
-      if (items.length === 0) {
-        showToast('No expenses to export for this selection.', 'danger');
-        return;
-      }
-      const headers = ['Date', 'Description', 'Category', 'Amount', 'Over_100'];
-      const rows = items.map(i => [
-        i.date,
-        `"${i.description.replace(/"/g, '""')}"`,
-        i.category,
-        i.amount.toFixed(2),
-        i.amount > HIGH_SPEND_THRESHOLD ? 'YES' : 'NO'
-      ].join(','));
-      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
-      const link = document.createElement('a');
-      link.setAttribute('href', encodeURI(csvContent));
-      const { startDate, endDate } = getActivePeriodBounds();
-      link.setAttribute('download', `expenses_${startDate}_to_${endDate}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      showToast('CSV exported!', 'success');
-    });
-
-    btnResetSample.addEventListener('click', () => {
-      expenses = [...SAMPLE_EXPENSES];
-      monthlyBudget = DEFAULT_BUDGET;
-      periodSettings = getDefaultPeriodSettings();
-      saveExpenses();
-      saveBudgetAndPeriod();
-      renderDashboard();
-      showToast('Sample expenses & default period restored.', 'success');
-    });
-
-    btnClearAll.addEventListener('click', () => {
-      expenses = [];
-      saveExpenses();
-      renderDashboard();
-      showToast('All expenses cleared.');
-    });
-
-    window.addEventListener('DOMContentLoaded', () => {
-      loadState();
-      const todayStr = toISODateString(new Date());
-      const { startDate, endDate } = getActivePeriodBounds();
-      inputDate.value = (todayStr >= startDate && todayStr <= endDate) ? todayStr : startDate;
-      renderDashboard();
-    });
-  </script>
-</body>
-</html>
+    <div id="empty-state" class="hidden py-14 px-6 text-center">
+      <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+        </svg>
+      </div>
+      <p class="text-sm font-semibold text-slate-700">No matching expenses found</p>
+      <p class="text-xs text-slate-500 mt-1">Try clearing your filters or add a new expense on the left.</p>
+    </div>
+  </div>
+</div>
